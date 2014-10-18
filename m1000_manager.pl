@@ -30,7 +30,7 @@ use Tk::BrowseEntry;
 use Tk::Optionmenu;
 use Tk::JPEG;
 use Tk::PNG;
-use Time::HiRes qw(usleep);
+use Time::HiRes qw(usleep time);
 
 # check if OS is Linux or Windows for OS specific sections
 my $LINUX;
@@ -74,6 +74,8 @@ my $Titlefg='#F3F3F3';
 my $modified=0;
 my $filename='';
 my @PData;
+my $midilast=0;
+my $midilock=0;
 
 my %Scale_defaults=(
     -width        => 8,
@@ -254,55 +256,53 @@ $mw->optionAdd('*Checkbutton.borderWidth', 1, 99);
 # set default canvas properties
 $mw->optionAdd('*Canvas.highlightThickness', 0, 99);
 
+
 # create main window layout
 my $Col_0  =$mw->Frame()->pack(-side=>'left',   -fill=>'y', -anchor=>'n');
 my $Col_1  =$mw->Frame()->pack(-side=>'left',   -fill=>'y', -anchor=>'n');
 my $Col_2  =$mw->Frame()->pack(-side=>'left',   -fill=>'y', -anchor=>'n');
-#my $Col_34 =$mw->Frame()->pack(-side=>'top',    -fill=>'y');
 my $Col_34b=$mw->Frame()->pack(-side=>'bottom', -fill=>'x');
 my $Col_3  =$mw->Frame()->pack(-side=>'left',   -fill=>'y', -anchor=>'n');
 my $Col_4  =$mw->Frame()->pack(-side=>'left',   -fill=>'y', -anchor=>'n');
-
-$midi_settings=$Col_34b->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'both', -expand=>1);
-
-$Env_frame[0]=$Col_2->Frame(%Frame_defaults)->pack(-side=>'top');
-Env_Frame(0);
-$Env_frame[1]=$Col_3->Frame(%Frame_defaults)->pack(-side=>'top');
-Env_Frame(1);
-$Env_frame[2]=$Col_4->Frame(%Frame_defaults)->pack(-side=>'top');
-Env_Frame(2);
-
-$DCO_frame[0]=$Col_0->Frame(%Frame_defaults)->pack(-side=>'top');
+# Column 0
+$DCO_frame[0]   = $Col_0->Frame(%Frame_defaults)->pack(-side=>'top');
 DCO_Frame(0);
-$LFO_frame[0]=$Col_0->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'y', -expand=>1);
+$LFO_frame[0]   = $Col_0->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'y', -expand=>1);
 LFO_Frame(0);
-
-$DCO_frame[1]=$Col_1->Frame(%Frame_defaults)->pack(-side=>'top');
-DCO_Frame(1);
-$LFO_frame[1]=$Col_1->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'y', -expand=>1);
-LFO_Frame(1);
-
-$VCA_frame=$Col_3->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'both', -expand=>1);
-VCA_Frame();
-$Porta_frame=$Col_3->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'both', -expand=>1);
-Porta_Frame();
-
-$Ramp_frame[0]=$Col_0->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'y', -expand=>1);
+$Ramp_frame[0]  = $Col_0->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'y', -expand=>1);
 Ramp_Frame(0);
-$Ramp_frame[1]=$Col_1->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'y', -expand=>1);
+# Column 1
+$DCO_frame[1]   = $Col_1->Frame(%Frame_defaults)->pack(-side=>'top');
+DCO_Frame(1);
+$LFO_frame[1]   = $Col_1->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'y', -expand=>1);
+LFO_Frame(1);
+$Ramp_frame[1]  = $Col_1->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'y', -expand=>1);
 Ramp_Frame(1);
-
-$VCF_frame=$Col_2->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'both', -expand=>1);
+# Column 2
+$Env_frame[0]   = $Col_2->Frame(%Frame_defaults)->pack(-side=>'top');
+Env_Frame(0);
+$VCF_frame      = $Col_2->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'both', -expand=>1);
 VCF_Frame();
-$FM_frame=$Col_2->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'both', -expand=>1);
+$FM_frame       = $Col_2->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'both', -expand=>1);
 FM_Frame();
-
-$TrGen_frame=$Col_4->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'x', -expand=>1);
+# Column 3
+$Env_frame[1]   = $Col_3->Frame(%Frame_defaults)->pack(-side=>'top');
+Env_Frame(1);
+$VCA_frame      = $Col_3->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'both', -expand=>1);
+VCA_Frame();
+$Porta_frame    = $Col_3->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'both', -expand=>1);
+Porta_Frame();
+# Column 4
+$Env_frame[2]   = $Col_4->Frame(%Frame_defaults)->pack(-side=>'top');
+Env_Frame(2);
+$TrGen_frame    = $Col_4->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'x', -expand=>1);
 TrGen_Frame();
-$Keybmode_frame=$Col_4->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'x', -expand=>1);
+$Keybmode_frame = $Col_4->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'x', -expand=>1);
 Keybmode_Frame();
-
+# Column 3+4 bottom
+$midi_settings  = $Col_34b->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'both', -expand=>1);
 MIDI_IOconfig();
+
 
 MainLoop;
 
@@ -310,6 +310,24 @@ MainLoop;
 # -----------
 # Subroutines
 # -----------
+
+# quit the program, ask for confirmation if unsaved changes
+sub exitProgam {
+    if ($modified == 1) {
+        my $rtn=UnsavedChanges('Quit anyway?');
+        if ($rtn eq 'Yes') {
+            if ($WINDOWS && ($midi_outdev ne '')) { $midiOut->Close(); }
+            exit;
+        }
+    } else {
+        if ($WINDOWS && ($midi_outdev ne '')) { $midiOut->Close(); }
+        exit;
+    }
+}
+
+
+#------------------------------------------------------------------------------------------------
+# MIDI Subroutines
 
 # create an array of available midi ports
 sub MidiPortList {
@@ -396,7 +414,121 @@ sub MidiConSetup {
     }
 }
 
-# Standard Horizontal Slider Subroutine
+# MIDI input and output devices selection
+sub MIDI_IOconfig {
+    $midi_settings->Label(%TitleLbl_defaults, -text=> 'MIDI Devices Configuration'
+    )->pack(-fill=>'x', -expand=>1, -anchor=>'n');
+
+    my $subframe=$midi_settings->Frame(%Default_FrBGCol,
+    )->pack(-fill=>'x', -expand=>1, -pady=>14);
+
+    # MIDI OUT device selection
+    $subframe->Label(%Label_defaults,
+        -text         => "Output MIDI Device to Matrix-1000: ",
+        -font         => 'Sans 9',
+        -justify      => 'right'
+    )->grid(-row=>0, -column=>0, -sticky=>'e', -pady=>8);
+
+    $midiout=$subframe->BrowseEntry(%BEntry_defaults,
+        -variable     => \$midi_outdev,
+        -choices      => \@midi_outdevs,
+        -font         => 'Sans 9',
+        -width        => 28,
+        -listheight   => 9,
+        -browsecmd    => sub{ MidiConSetup('out'); },
+        -listcmd      => sub{ @midi_outdevs=MidiPortList('out');
+                              $midiout->delete( 0, "end" );
+                              $midiout->insert("end", $_) for (@midi_outdevs); }
+    )->grid(-row=>0, -column=>1, -sticky=>'w', -pady=>8);
+
+    $midiout->Subwidget("choices")->configure(%choices_defaults);
+    $midiout->Subwidget("arrow")->configure(%arrow_defaults);
+
+    if (!$LINUX && !$WINDOWS) { $midiout->configure(-state=>'disabled'); }
+
+    # MIDI IN device selection
+    $subframe->Label(%Label_defaults,
+        -text         => "Input MIDI Device from Matrix-1000: ",
+        -font         => 'Sans 9',
+        -justify      => 'right'
+    )->grid(-row=>1, -column=>0, -sticky=>'e', -pady=>8);
+
+    $midiin=$subframe->BrowseEntry(%BEntry_defaults,
+        -variable     => \$midi_indev,
+        -choices      => \@midi_indevs,
+        -font         => 'Sans 9',
+        -width        => 28,
+        -listheight   => 9,
+        -browsecmd    => sub{ MidiConSetup('in'); },
+        -listcmd      => sub{ @midi_indevs=MidiPortList('in');
+                              $midiin->delete( 0, "end" );
+                              $midiin->insert("end", $_) for (@midi_indevs); }
+    )->grid(-row=>1, -column=>1, -sticky=>'w', -pady=>8);
+
+    $midiin->Subwidget("choices")->configure(%choices_defaults);
+    $midiin->Subwidget("arrow")->configure(%arrow_defaults);
+
+    if (!$LINUX) { $midiin->configure(-state=>'disabled'); }
+
+}
+
+# Play a Note via MIDI (send 'note on' or 'note off' event)
+sub PlayMidiNote {
+    my $ch=$_[0]; # midi channel 0-15
+    my $nt=$_[1]; # midi note 0-127
+    my $vl=$_[2]; # note velocity 0-127
+    my $oo=$_[3]; # note on (1) or note off (0)
+    if ($LINUX) {
+        if ($oo) {
+            MIDI::ALSA::output(MIDI::ALSA::noteonevent($ch,$nt,$vl));
+        } else {
+            MIDI::ALSA::output(MIDI::ALSA::noteoffevent($ch,$nt,$vl));
+        }
+    } elsif ($WINDOWS && ($midi_outdev ne '')) {
+        my $msg=($vl*65536)+($nt*256)+(128+$ch+($oo*16));
+        $midiOut->ShortMsg($msg);
+    }
+}
+
+# send Patch Parameter Change Message (real time sysex) to Matrix-1000
+sub SendPaChMsg {
+    my($param, $value)=@_;
+
+    if ($midi_outdev ne '') {                       # only proced if MIDI OUT device is set
+        print STDOUT "par:[$param] val:[$value]\n"; # for debug purposes
+        until ($midilock == 0) { usleep(1); };      # wait until preceding par changes are done
+        $midilock=1;                                # lock out other par change attempts
+        if ($value < 0){ $value=$value+128; }       # handle negative values correctly
+        my $ddata="\x10\x06\x06".chr($param).chr($value);
+        # Enforce 20 ms gap since last par change msg sent
+        my $midinow=time;
+        my $gap=($midinow - $midilast);
+        if ($gap < 0.02) {
+            usleep ((0.02 - $gap) * 1000000 );
+        }
+        print STDOUT time ."\n";                    # for debug purposes
+        # Send the MIDI data to the synth
+        if ($LINUX) {
+            MIDI::ALSA::output( MIDI::ALSA::sysex( $dev_nr-1, $ddata, 0 ) );
+        }
+        elsif ($WINDOWS) {
+            my $buf="\xF0".$ddata."\xF7";
+            my $midihdr = pack ("PLLLLPLL", $buf, length $buf, 0, 0, 0, undef, 0, 0);
+            my $lpMidiOutHdr = unpack('L!', pack('P', $midihdr));
+            $midiOut->PrepareHeader($lpMidiOutHdr);
+            $midiOut->LongMsg($lpMidiOutHdr);
+            $midiOut->UnprepareHeader($lpMidiOutHdr);
+        }
+        $midilast=time;    # store timestamp
+        $midilock=0;       # allow other par changes to proceed
+    }
+}
+
+
+#------------------------------------------------------------------------------------------------
+# Standard GUI Elements
+
+# Horizontal Slider, returns Scale and Spinbox created
 sub StdSlider {
     my($frame, $var, $from, $to, $intv, $incr, $param, $label, $transf)=@_;
     if (! $transf) {$transf=''}
@@ -509,7 +641,7 @@ sub OnOffSwitch {
     )->pack(-side=>'left');
 }
 
-# Standard subframe with header, returns subframe created
+# Subframe with header, returns Subframe created
 sub StdFrame {
     my($frame, $title)=@_;
 
@@ -523,119 +655,6 @@ sub StdFrame {
     return $subframe;
 }
 
-# quit the program, ask for confirmation if unsaved changes
-sub exitProgam {
-    if ($modified == 1) {
-        my $rtn=UnsavedChanges('Quit anyway?');
-        if ($rtn eq 'Yes') {
-            if ($WINDOWS && ($midi_outdev ne '')) { $midiOut->Close(); }
-            exit;
-        }
-    } else {
-        if ($WINDOWS && ($midi_outdev ne '')) { $midiOut->Close(); }
-        exit;
-    }
-}
-
-# Play a Note via MIDI (send 'note on' or 'note off' event)
-sub PlayMidiNote {
-    my $ch=$_[0]; # midi channel 0-15
-    my $nt=$_[1]; # midi note 0-127
-    my $vl=$_[2]; # note velocity 0-127
-    my $oo=$_[3]; # note on (1) or note off (0)
-    if ($LINUX) {
-        if ($oo) {
-            MIDI::ALSA::output(MIDI::ALSA::noteonevent($ch,$nt,$vl));
-        } else {
-            MIDI::ALSA::output(MIDI::ALSA::noteoffevent($ch,$nt,$vl));
-        }
-    } elsif ($WINDOWS && ($midi_outdev ne '')) {
-        my $msg=($vl*65536)+($nt*256)+(128+$ch+($oo*16));
-        $midiOut->ShortMsg($msg);
-    }
-}
-
-# send Patch Parameter Change Message (real time sysex) to Matrix-1000
-sub SendPaChMsg {
-    my($param, $value)=@_;
-
-    print STDOUT "par:[$param] val:[$value]\n"; # for debug purposes
-    if ($midi_outdev ne '') {
-        if ($value < 0){ $value=$value+128; }   # handle negative values correctly
-        my $ddata="\x10\x06\x06".chr($param).chr($value);
-        usleep ( 20000 );
-        if ($LINUX) {
-            MIDI::ALSA::output( MIDI::ALSA::sysex( $dev_nr-1, $ddata, 0 ) );
-        }
-        elsif ($WINDOWS) {
-            my $buf="\xF0".$ddata."\xF7";
-            my $midihdr = pack ("PLLLLPLL", $buf, length $buf, 0, 0, 0, undef, 0, 0);
-            my $lpMidiOutHdr = unpack('L!', pack('P', $midihdr));
-            $midiOut->PrepareHeader($lpMidiOutHdr);
-            $midiOut->LongMsg($lpMidiOutHdr);
-            $midiOut->UnprepareHeader($lpMidiOutHdr);
-        }
-    }
-}
-
-
-# MIDI input and output devices selection
-sub MIDI_IOconfig {
-    $midi_settings->Label(%TitleLbl_defaults, -text=> 'MIDI Devices Configuration'
-    )->pack(-fill=>'x', -expand=>1, -anchor=>'n');
-
-    my $subframe=$midi_settings->Frame(%Default_FrBGCol,
-    )->pack(-fill=>'x', -expand=>1, -pady=>14);
-
-    # MIDI OUT device selection
-    $subframe->Label(%Label_defaults,
-        -text         => "Output MIDI Device to Matrix-1000: ",
-        -font         => 'Sans 9',
-        -justify      => 'right'
-    )->grid(-row=>0, -column=>0, -sticky=>'e', -pady=>8);
-
-    $midiout=$subframe->BrowseEntry(%BEntry_defaults,
-        -variable     => \$midi_outdev,
-        -choices      => \@midi_outdevs,
-        -font         => 'Sans 9',
-        -width        => 28,
-        -listheight   => 9,
-        -browsecmd    => sub{ MidiConSetup('out'); },
-        -listcmd      => sub{ @midi_outdevs=MidiPortList('out');
-                              $midiout->delete( 0, "end" );
-                              $midiout->insert("end", $_) for (@midi_outdevs); }
-    )->grid(-row=>0, -column=>1, -sticky=>'w', -pady=>8);
-
-    $midiout->Subwidget("choices")->configure(%choices_defaults);
-    $midiout->Subwidget("arrow")->configure(%arrow_defaults);
-
-    if (!$LINUX && !$WINDOWS) { $midiout->configure(-state=>'disabled'); }
-
-    # MIDI IN device selection
-    $subframe->Label(%Label_defaults,
-        -text         => "Input MIDI Device from Matrix-1000: ",
-        -font         => 'Sans 9',
-        -justify      => 'right'
-    )->grid(-row=>1, -column=>0, -sticky=>'e', -pady=>8);
-
-    $midiin=$subframe->BrowseEntry(%BEntry_defaults,
-        -variable     => \$midi_indev,
-        -choices      => \@midi_indevs,
-        -font         => 'Sans 9',
-        -width        => 28,
-        -listheight   => 9,
-        -browsecmd    => sub{ MidiConSetup('in'); },
-        -listcmd      => sub{ @midi_indevs=MidiPortList('in');
-                              $midiin->delete( 0, "end" );
-                              $midiin->insert("end", $_) for (@midi_indevs); }
-    )->grid(-row=>1, -column=>1, -sticky=>'w', -pady=>8);
-
-    $midiin->Subwidget("choices")->configure(%choices_defaults);
-    $midiin->Subwidget("arrow")->configure(%arrow_defaults);
-
-    if (!$LINUX) { $midiin->configure(-state=>'disabled'); }
-
-}
 
 #------------------------------------------------------------------------------------------------
 # Editor Frames
@@ -767,6 +786,5 @@ sub LFO_Frame {
     my @TrgMod_label=('off', 'single', 'multi', 'pedal 2');
     OptSelect(   \$subframe, \$PData[(86+$m)],  \@TrgMod_label,    (86+$m),  7, 'Trigger Mode:');
     OnOffSwitch( \$subframe, \$PData[(87+$m)],                     (87+$m),     'Lag: ');
-
 }
 
