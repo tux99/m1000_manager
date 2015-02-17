@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-#  Oberheim Matrix-1000 Manager version 0.4
+#  Oberheim Matrix-1000 Manager version 0.5
 #
 #  Copyright (C) 2014-2015 LinuxTECH.NET
 #
@@ -21,7 +21,7 @@
 use strict;
 use warnings;
 
-my $version="0.4";
+my $version="0.5";
 my $year="2014-2015";
 
 use Tk;
@@ -173,6 +173,8 @@ my %MBar_defaults=(
     -borderwidth => 1,
     -relief      => 'raised'
 );
+
+my %GridConf=();
 
 # down arrow bitmap for pulldown menu
 my $darrow_bits=pack("b11"x10,
@@ -397,6 +399,12 @@ $midi_settings  = $Col_34b->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'b
 MIDI_IOconfig();
 $editbufferops  = $Col_34b->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'both', -expand=>1);
 EditBufferOps();
+# Modulation Matrix Window
+$ModMatrix_frame=$mw->Toplevel(-title=>'Modulation Matrix');
+$ModMatrix_frame->protocol(WM_DELETE_WINDOW => \&Noop );
+$ModMatrix_frame->resizable(0,0);
+ModMatrix_Frame();
+
 
 MainLoop;
 
@@ -418,6 +426,9 @@ sub exitProgam {
         exit;
     }
 }
+
+# Do nothing
+sub Noop {}
 
 # call as: UnsavedChanges($question), returns: Yes/No
 sub UnsavedChanges {
@@ -529,6 +540,7 @@ sub newVoice {
         $mw->title($titlestring);
         $patnr=0;
         PData2Name();
+        if ($midi_outdev ne '') { SysexPatSend(); }
     }
 }
 
@@ -559,6 +571,7 @@ sub loadFile {
                 $modified=0;
                 $filename=$syx_file;
                 $mw->title("$titlestring - $filename");
+                if ($midi_outdev ne '') { SysexPatSend(); }
             }
         } elsif ($syx_file) {
             Error(\$mw,"Error: could not open $syx_file");
@@ -950,14 +963,25 @@ sub SendCC {
 # send Patch Parameter Change Message (real time sysex) to Matrix-1000
 sub SendPaChMsg {
     my($param, $value)=@_;
+    my $ddata='';
 
     if ($midi_outdev ne '') {                       # only proced if MIDI OUT device is set
-#        print STDOUT "par:[$param] val:[$value]\n"; # for debug purposes
         until ($midilock == 0) { usleep(1); };      # wait until preceding par changes are done
         $midilock=1;                                # lock out other par change attempts
-        if ($value < 0){ $value=$value+128; }       # handle negative values correctly
-        print STDOUT "par:[$param] val:[$value]\n"; # for debug purposes
-        my $ddata="\x10\x06\x06".chr($param).chr($value);
+        if ($param < 100) {                         # deal with normal parameters
+            if ($value < 0){ $value=$value+128; }   # handle negative values correctly
+            $ddata="\x10\x06\x06".chr($param).chr($value);
+            print STDOUT "par:[$param] val:[$value]\n"; # for debug purposes
+        } else {                                    # Mod Matrix parameters need special handling
+            my $p=($param-100);
+            my $n=($p*3);
+            my ($src)=($PData[(104+$n)]=~/^(\d\d):.*/);
+            my  $val = $PData[(105+$n)];
+            my ($dst)=($PData[(106+$n)]=~/^(\d\d):.*/);
+            if ($val < 0){ $val=$val+128; }
+            $ddata="\x10\x06\x0B".chr($p).chr($src).chr($val).chr($dst);
+            print STDOUT "MM:[$p] src:[$src] val:[$val] dst:[$dst]\n"; # for debug purposes
+        }
         # Enforce 20 ms gap since last par change msg sent
         my $midinow=time;
         my $gap=($midinow - $midilast);
@@ -1061,10 +1085,18 @@ sub StdFrame {
 
 # Horizontal Slider, returns Scale and Spinbox created
 sub StdSlider {
-    my($frame, $var, $from, $to, $intv, $incr, $param, $label, $transf)=@_;
+    my($frame, $var, $from, $to, $intv, $incr, $param, $label, $nofr, $transf)=@_;
     if (! $transf) {$transf=''}
 
-    my $scale=$$frame->Scale(%Scale_defaults,
+    my $sf;
+    # create wrapper frame unless $nofr is set
+    if (! $nofr) {
+        $sf=$$frame->Frame(%Default_FrBGCol)->grid(%GridConf,-columnspan=>2);
+    } else {
+        $sf=$$frame;
+    }
+
+    my $scale=$sf->Scale(%Scale_defaults,
         -variable     =>  $var,
         -to           =>  $to,
         -from         =>  $from,
@@ -1073,7 +1105,7 @@ sub StdSlider {
         -label        =>  $label,
         -command      => sub{ SendPaChMsg($param,(eval"$$var$transf")); }
     )->grid(
-    my $spinbox=$$frame->Spinbox(%Entry_defaults,
+    my $spinbox=$sf->Spinbox(%Entry_defaults,
         -width        =>  3,
         -justify      => 'center',
         -font         => 'Sans 10',
@@ -1111,7 +1143,7 @@ sub OptSelect {
 
     # create wrapper frame unless $nofr is set
     if (! $nofr) {
-        $sf=$$frame->Frame(%Default_FrBGCol)->grid(-columnspan=>2);
+        $sf=$$frame->Frame(%Default_FrBGCol)->grid(%GridConf,-columnspan=>2);
     } else {
         $sf=$$frame;
     }
@@ -1143,7 +1175,7 @@ sub PullDwnMenu {
 
     # create wrapper frame unless $nofr is set
     if (! $nofr) {
-        $sf=$$frame->Frame(%Default_FrBGCol)->grid(-columnspan=>2);
+        $sf=$$frame->Frame(%Default_FrBGCol)->grid(%GridConf,-columnspan=>2);
     } else {
         $sf=$$frame;
     }
@@ -1168,7 +1200,7 @@ sub OnOffSwitch {
 
     # create wrapper frame unless $nofr is set
     if (! $nofr) {
-        $sf=$$frame->Frame(%Default_FrBGCol)->grid(-columnspan=>2, -pady=>1);
+        $sf=$$frame->Frame(%Default_FrBGCol)->grid(%GridConf,-columnspan=>2, -pady=>1);
     } else {
         $sf=$$frame;
     }
@@ -1307,22 +1339,38 @@ sub LFO_Frame {
     my $subframe=StdFrame(\$LFO_frame[$lfo],'LFO '.($lfo+1));
     my @LFOWav_label=("bm:triangle", "bm:upsaw", "bm:downsaw", "bm:square", "bm:random", "bm:noise", "bm:sampled");
     OptSelect(   \$subframe, \$PData[(38+$n)],  \@LFOWav_label,    (82+$m), 23, 'Waveform:');
+    OnOffSwitch( \$subframe, \$PData[(37+$n)],                     (87+$m),     'Lag: ');
     PullDwnMenu( \$subframe, \$PData[(40+$n)],  \@mod_sources,     (88+$m), 18, 'Sample source:');
-    StdSlider(   \$subframe, \$PData[(35+$n)],       0,  63,  7, 1,(80+$m),     'Speed');
+    StdSlider(   \$subframe, \$PData[(35+$n)],       0,  63,  7, 1,(80+$m),     'Speed (frequency)');
     if (!$lfo) { $txt='Aftertouch'; } else { $txt='Keyboard'; }
     StdSlider(   \$subframe, \$PData[(102+$lfo)],  -63,  63, 14, 1,(81+$m),     'Speed modulation by '.$txt);
-    StdSlider(   \$subframe, \$PData[(39+$n)],       0,  63,  7, 1,(83+$m),     'Retrigger Point');
     StdSlider(   \$subframe, \$PData[(41+$n)],       0,  63,  7, 1,(84+$m),     'Amplitude');
     StdSlider(   \$subframe, \$PData[(97+$lfo)],   -63,  63, 14, 1,(85+$m),     'Amplitude modulation by Ramp '.($lfo+1));
+    StdSlider(   \$subframe, \$PData[(39+$n)],       0,  63,  7, 1,(83+$m),     'Retrigger Point');
     my @TrgMod_label=('off', 'single', 'multi', 'pedal 2');
     OptSelect(   \$subframe, \$PData[(36+$n)],  \@TrgMod_label,    (86+$m),  7, 'Trigger Mode:');
-    OnOffSwitch( \$subframe, \$PData[(37+$n)],                     (87+$m),     'Lag: ');
 }
 
 sub ModMatrix_Frame {
-    my $subframe=StdFrame(\$ModMatrix_frame,'Modulation Matrix');
+    my $subframe=$ModMatrix_frame->Frame(%Frame_defaults
+    )->pack(-fill=>'both', -expand=>1, -anchor=>'n');
+
+    $subframe->Label(%TitleLbl_defaults, -text=>'Source' )           ->grid(-row=>0, -column=>0, -columnspan=>2, -sticky=>'ew');
+    $subframe->Label(%TitleLbl_defaults, -text=>'Modulation Amount' )->grid(-row=>0, -column=>2, -columnspan=>2, -sticky=>'ew');
+    $subframe->Label(%TitleLbl_defaults, -text=>'Destination' )      ->grid(-row=>0, -column=>4, -columnspan=>2, -sticky=>'ew');
+
     for (my $a=0; $a<=9; $a++) {
-    # To Do    
+        my $n=($a*3);
+
+        %GridConf=(-row=>($a+1), -column=>0, -sticky=>'ew', -padx=>6, -pady=>6);
+        PullDwnMenu( \$subframe, \$PData[(104+$n)],  \@mod_sources, ($a+100), 18, "$a) ");
+
+        %GridConf=(-row=>($a+1), -column=>2, -sticky=>'ew', -padx=>6, -pady=>6);
+        StdSlider(   \$subframe, \$PData[(105+$n)], -63,  63, 14, 1,($a+100),     '');
+
+        %GridConf=(-row=>($a+1), -column=>4, -sticky=>'ew', -padx=>6, -pady=>6);
+        PullDwnMenu( \$subframe, \$PData[(106+$n)],  \@mod_dest,    ($a+100), 18, '');
     }
+    %GridConf=();
 }
 
