@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-#  Oberheim Matrix-1000 Manager version 0.5
+#  Oberheim Matrix-1000 Manager version 0.5.1
 #
 #  Copyright (C) 2014-2015 LinuxTECH.NET
 #
@@ -21,7 +21,7 @@
 use strict;
 use warnings;
 
-my $version="0.5";
+my $version="0.5.1";
 my $year="2014-2015";
 
 use Tk;
@@ -360,39 +360,39 @@ my $Col_34b=$mw->Frame()->pack(-side=>'bottom', -fill=>'x');
 my $Col_3  =$mw->Frame()->pack(-side=>'left',   -fill=>'y', -anchor=>'n');
 my $Col_4  =$mw->Frame()->pack(-side=>'left',   -fill=>'y', -anchor=>'n');
 # Column 0
-$DCO_frame[0]   = $Col_0->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'y', -expand=>1);
+$DCO_frame[0]   = $Col_0->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'both', -expand=>1);
 DCO_Frame(0);
-$LFO_frame[0]   = $Col_0->Frame(%Frame_defaults)->pack(-side=>'top');
+$LFO_frame[0]   = $Col_0->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'x', -expand=>0, -anchor =>'s');
 LFO_Frame(0);
-$Ramp_frame[0]  = $Col_0->Frame(%Frame_defaults)->pack(-side=>'top');
+$Ramp_frame[0]  = $Col_0->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'x', -expand=>0, -anchor =>'s');
 Ramp_Frame(0);
 # Column 1
-$DCO_frame[1]   = $Col_1->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'y', -expand=>1);
+$DCO_frame[1]   = $Col_1->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'both', -expand=>1);
 DCO_Frame(1);
-$LFO_frame[1]   = $Col_1->Frame(%Frame_defaults)->pack(-side=>'top');
+$LFO_frame[1]   = $Col_1->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'x', -expand=>0, -anchor =>'s');
 LFO_Frame(1);
-$Ramp_frame[1]  = $Col_1->Frame(%Frame_defaults)->pack(-side=>'top');
+$Ramp_frame[1]  = $Col_1->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'x', -expand=>0, -anchor =>'s');
 Ramp_Frame(1);
 # Column 2
-$Env_frame[0]   = $Col_2->Frame(%Frame_defaults)->pack(-side=>'top');
+$Env_frame[0]   = $Col_2->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'x', -expand=>0, -anchor =>'n');
 Env_Frame(0);
 $VCF_frame      = $Col_2->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'both', -expand=>1);
 VCF_Frame();
 $FM_frame       = $Col_2->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'both', -expand=>1);
 FM_Frame();
 # Column 3
-$Env_frame[1]   = $Col_3->Frame(%Frame_defaults)->pack(-side=>'top');
+$Env_frame[1]   = $Col_3->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'x', -expand=>1, -anchor =>'n');
 Env_Frame(1);
 $VCA_frame      = $Col_3->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'both', -expand=>1);
 VCA_Frame();
 $Porta_frame    = $Col_3->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'both', -expand=>1);
 Porta_Frame();
 # Column 4
-$Env_frame[2]   = $Col_4->Frame(%Frame_defaults)->pack(-side=>'top');
+$Env_frame[2]   = $Col_4->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'x', -expand=>1, -anchor =>'n');
 Env_Frame(2);
-$TrGen_frame    = $Col_4->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'x', -expand=>1);
+$TrGen_frame    = $Col_4->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'both', -expand=>1);
 TrGen_Frame();
-$Keybmode_frame = $Col_4->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'x', -expand=>1);
+$Keybmode_frame = $Col_4->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'both', -expand=>1);
 Keybmode_Frame();
 # Column 3+4 bottom
 $midi_settings  = $Col_34b->Frame(%Frame_defaults)->pack(-side=>'top', -fill=>'both', -expand=>1);
@@ -476,11 +476,11 @@ sub topMenubar {
     my $detune=$$frame->Frame()->pack(-side=>'right');
     $detune->Label(-text=>'Unison detune: ', -font=>'Sans 10')->pack(-side=>'left');
     $detune->Scale(
-        -variable     =>  \$det_val,
-        -to           =>  127,
-        -from         =>  0,
-        -resolution   =>  1,
-        -tickinterval =>  20,
+        -variable     => \$det_val,
+        -to           => 127,
+        -from         => 0,
+        -resolution   => 1,
+        -tickinterval => 20,
         -width        => 8,
         -length       => 180,
         -sliderlength => 20,
@@ -1186,7 +1186,7 @@ sub PullDwnMenu {
         -variable     => $var,
         -choices      => $options,
         -width        => $menuwidth,
-        -font         => 'Fixed 8',
+        -font         => 'Sans 8',
         -browsecmd    => sub{ SendPaChMsg($parm,($$var=~/^(\d\d):.*/)); }
     ),-pady=>2);
     $entry->Subwidget("choices")->configure(%choices_defaults);
@@ -1363,13 +1363,13 @@ sub ModMatrix_Frame {
         my $n=($a*3);
 
         %GridConf=(-row=>($a+1), -column=>0, -sticky=>'ew', -padx=>6, -pady=>6);
-        PullDwnMenu( \$subframe, \$PData[(104+$n)],  \@mod_sources, ($a+100), 18, "$a) ");
+        PullDwnMenu( \$subframe, \$PData[(104+$n)],  \@mod_sources, ($a+100), 20, "$a) ");
 
         %GridConf=(-row=>($a+1), -column=>2, -sticky=>'ew', -padx=>6, -pady=>6);
         StdSlider(   \$subframe, \$PData[(105+$n)], -63,  63, 14, 1,($a+100),     '');
 
         %GridConf=(-row=>($a+1), -column=>4, -sticky=>'ew', -padx=>6, -pady=>6);
-        PullDwnMenu( \$subframe, \$PData[(106+$n)],  \@mod_dest,    ($a+100), 18, '');
+        PullDwnMenu( \$subframe, \$PData[(106+$n)],  \@mod_dest,    ($a+100), 20, '');
     }
     %GridConf=();
 }
