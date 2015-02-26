@@ -25,7 +25,8 @@ Prerequisites:
 
 
 - Time::HiRes
-  a Perl library module for high resolution timers, the package is included in
+
+  A Perl library module for high resolution timers, the package is included in
   the core Perl package of Debian derived distros, while on RPM based distros
   it's a separate package called 'perl-Time-HiRes'.
   Else install it from CPAN: cpan Time::HiRes
@@ -67,7 +68,8 @@ Prerequisites:
 
 
 - Time::HiRes
-  a Perl library module for high resolution timers.
+
+  A Perl library module for high resolution timers.
   Install it from CPAN over the internet.
   Type the following into an open Windows command prompt: cpan Time::HiRes
 
