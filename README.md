@@ -24,11 +24,19 @@ Prerequisites:
   package is called either 'perl-tk' or 'perl-Tk' (with a capital 'T').
 
 
+- Time::HiRes
+  a Perl library module for high resolution timers, the package is included in
+  the core Perl package of Debian derived distros, while on RPM based distros
+  it's a separate package called 'perl-Time-HiRes'.
+  Else install it from CPAN: cpan Time::HiRes
+
+
 - MIDI::ALSA
 
   a Perl library module that provides MIDI functionality on Linux, you will
-  have to install this from the source tarball as AFAIK no distro includes
-  this yet. Get it from here: http://search.cpan.org/dist/MIDI-ALSA/ALSA.pm
+  have to install this from the source tarball as AFAIK only Mageia includes
+  it in their repositories so far (Mageia package name is: perl-MIDI-ALSA).
+  Get the source from here: http://search.cpan.org/dist/MIDI-ALSA/ALSA.pm
   or install it via CPAN: cpan MIDI::ALSA
 
 
@@ -56,6 +64,12 @@ Prerequisites:
   You need to be connected to the internet to do this as this will contact the
   Strawberry Perl CPAN repository and download and install Perl-Tk
   automatically all in one go.
+
+
+- Time::HiRes
+  a Perl library module for high resolution timers.
+  Install it from CPAN over the internet.
+  Type the following into an open Windows command prompt: cpan Time::HiRes
 
 
 - Win32API-MIDI  ( http://search.cpan.org/dist/Win32API-MIDI/MIDI.pm )

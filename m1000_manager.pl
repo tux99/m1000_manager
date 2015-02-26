@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-#  Oberheim Matrix-1000 Manager version 0.5.1
+#  Oberheim Matrix-1000 Manager version 0.5.2
 #
 #  Copyright (C) 2014-2015 LinuxTECH.NET
 #
@@ -21,7 +21,7 @@
 use strict;
 use warnings;
 
-my $version="0.5.1";
+my $version="0.5.2";
 my $year="2014-2015";
 
 use Tk;
@@ -63,11 +63,18 @@ my $dev_nr=1;
 my $LCDbg='#E5FFB1'; #'#ECFFAF';
 # general background colour
 my $bgcolor='#DCBE37';
+# general font color
+my $fontcolor='black';
 # button colour
 my $btncol='#DCDCDC';
 # title strips background and font colour
 my $Titlebg='#487890';
 my $Titlefg='#F3F3F3';
+# slider labels
+my $sp=0; # label interval for 0-63 (could be 0,7,9,63)
+my $sn=0; # label interval for -63-63 (could be 0,14,63)
+my $s3=0; # label interval for -31-31 (could be 0,31)
+my $s7=0; # label interval for 0-127 (could be 0,20,127)
 
 #$Tk::strictMotif=1;
 
@@ -83,11 +90,12 @@ my $det_val=0;
 my $titlestring="M1000 Manager - Oberheim Matrix-1000 Editor";
 
 my %Scale_defaults=(
-    -width        => 8,
+    -width        => 10,
     -length       => 180,
     -sliderlength => 20,
     -borderwidth  => 1,
     -background   => $bgcolor,
+    -foreground   => $fontcolor,
     -troughcolor  => 'darkgrey',
     -highlightthickness => 0,
     -showvalue    => 0,
@@ -95,38 +103,29 @@ my %Scale_defaults=(
     -cursor       => 'hand2',
     -orient       => 'horizontal'
 );
-my %Scale_label_defaults=(
-    -width        => 3,
-    -height       => 1,
-    -borderwidth  => 1,
-    -font         => 'Sans 10',
-    -foreground   => 'black',
-    -background   => $LCDbg,
-    -relief       => 'sunken'
-);
 my %Label_defaults=(
     -font                => 'Sans 8',
-    -background          => $bgcolor
+    -background          => $bgcolor,
+    -foreground          => $fontcolor
 );
-
 my $selcol;
 if ($LINUX) { $selcol=$LCDbg; } elsif ($WINDOWS) { $selcol=$bgcolor; }
 my %Chkbtn_defaults=(
     -background          => $bgcolor,
+    -foreground          => $fontcolor,
     -activebackground    => $bgcolor,
     -highlightthickness  => 0,
     -indicatoron         => 1,
     -selectcolor         => $selcol,
     -font                => 'Sans 8'
 );
-my %Frame_defaults=(
-    -borderwidth         => 2,
-    -highlightthickness  => 0,
-    -background          => $bgcolor,
-    -relief              => 'groove'
-);
 my %Default_FrBGCol=(
     -background          => $bgcolor
+);
+my %Frame_defaults=(%Default_FrBGCol,
+    -borderwidth         => 2,
+    -highlightthickness  => 0,
+    -relief              => 'groove'
 );
 my %BEntry_defaults=(
     -state               => 'readonly',
@@ -1116,7 +1115,7 @@ sub StdSlider {
         -state        => 'readonly',
         -readonlybackground => $LCDbg,
         -command      => sub{ SendPaChMsg($param,(eval"$$var$transf")); }
-    ),-padx=>1,-pady=>0);
+    ), -padx=>1, -pady=>3, -sticky =>'s');
 
     # Spinbox mousewheel support for Windows (Linux has it by default)
     if ($WINDOWS) {
@@ -1229,16 +1228,16 @@ sub DCO_Frame {
     else       { @DCO_wavsel_label=('off', 'pulse', 'wave', 'both', 'noise'); }  # DCO 2
     OptSelect(   \$subframe, \$PData[(13+$n)],  \@DCO_wavsel_label, (6+$m),  6, 'Oscillator Waveform:');
     OnOffSwitch( \$subframe, \$PData[(22+$t)],                      (9+$m),     'Key Click: ');
-    StdSlider(   \$subframe, \$PData[(10+$n)],       0,  63,  7, 1, (5+$m),     'Wave Shape (0=saw -> 63=triangle)');
-    StdSlider(   \$subframe, \$PData[(11+$n)],       0,  63,  7, 1, (3+$m),     'Pulse Width (31=square)');
-    StdSlider(   \$subframe, \$PData[(87+$t)],     -63,  63, 14, 1, (4+$m),     'Pulse Width modulation by LFO 2');
-    StdSlider(   \$subframe, \$PData[( 9+$n)],       0,  63,  7, 1, (0+$m),     'Frequency (semi-tone increments)');
-    StdSlider(   \$subframe, \$PData[(86+$t)],     -63,  63, 14, 1, (1+$m),     'Frequency modulation by LFO 1');
+    StdSlider(   \$subframe, \$PData[(10+$n)],       0,  63,$sp, 1, (5+$m),     'Wave Shape (0=saw -> 63=triangle)');
+    StdSlider(   \$subframe, \$PData[(11+$n)],       0,  63,$sp, 1, (3+$m),     'Pulse Width (31=square)');
+    StdSlider(   \$subframe, \$PData[(87+$t)],     -63,  63,$sn, 1, (4+$m),     'Pulse Width modulation by LFO 2');
+    StdSlider(   \$subframe, \$PData[( 9+$n)],       0,  63,$sp, 1, (0+$m),     'Frequency (semi-tone increments)');
+    StdSlider(   \$subframe, \$PData[(86+$t)],     -63,  63,$sn, 1, (1+$m),     'Frequency modulation by LFO 1');
     if (!$osc) {
      my @DCO1_sync_label=('off', 'soft', 'medium', 'hard');
      OptSelect(  \$subframe, \$PData[ 25],      \@DCO1_sync_label,       2,  8, 'DCO Synchronization:');
     } else {
-     StdSlider(  \$subframe, \$PData[ 19],         -31,  31, 31, 1,     12,     'Detune DCO 2 relative to DCO 1');
+     StdSlider(  \$subframe, \$PData[ 19],         -31,  31,$s3, 1,     12,     'Detune DCO 2 relative to DCO 1');
     }
     my @DCO_levers_label=('off', 'p.bend', 'vibrato', 'both');
     OptSelect(   \$subframe, \$PData[(12+$n)],  \@DCO_levers_label, (7+$m),  8, 'Fixed Modulations:');
@@ -1252,11 +1251,11 @@ sub DCO_Frame {
 
 sub VCF_Frame {
     my $subframe=StdFrame(\$VCF_frame,'24dB LP Filter (VCF)');
-    StdSlider(   \$subframe, \$PData[ 20],           0,  63,  7, 1,     20,     'Balance (DCO 2 <---31---> DCO 1)');
-    StdSlider(   \$subframe, \$PData[ 26],           0, 127, 20, 1,     21,     'Cutoff Frequency');
-    StdSlider(   \$subframe, \$PData[ 27],           0,  63,  7, 1,     24,     'Resonance');
-    StdSlider(   \$subframe, \$PData[ 90],         -63,  63, 14, 1,     22,     'Frequency modulation by ENV 1');
-    StdSlider(   \$subframe, \$PData[ 91],         -63,  63, 14, 1,     23,     'Frequency modulation by Aftertouch');
+    StdSlider(   \$subframe, \$PData[ 20],           0,  63,$sp, 1,     20,     'Balance (DCO 2 <---31---> DCO 1)');
+    StdSlider(   \$subframe, \$PData[ 26],           0, 127,$s7, 1,     21,     'Cutoff Frequency');
+    StdSlider(   \$subframe, \$PData[ 27],           0,  63,$sp, 1,     24,     'Resonance');
+    StdSlider(   \$subframe, \$PData[ 90],         -63,  63,$sn, 1,     22,     'Frequency modulation by ENV 1');
+    StdSlider(   \$subframe, \$PData[ 91],         -63,  63,$sn, 1,     23,     'Frequency modulation by Aftertouch');
     my @VCF_levers_label=('off', 'p.bend', 'vibrato', 'both');
     OptSelect(   \$subframe, \$PData[ 28],  \@VCF_levers_label,         25,  8, 'Frequency modulation by:');
     my @VCF_porta_label=('none', 'portam.', 'kb.track');
@@ -1265,41 +1264,41 @@ sub VCF_Frame {
 
 sub VCA_Frame {
     my $subframe=StdFrame(\$VCA_frame,'Two-Stage Amplifier (VCA 1 + 2)');
-    StdSlider(   \$subframe, \$PData[ 31],           0,  63,  7, 1,     27,     'VCA 1 Volume');
-    StdSlider(   \$subframe, \$PData[ 92],         -63,  63, 14, 1,     28,     'VCA 1 modulation by Velocity');
-    StdSlider(   \$subframe, \$PData[ 93],         -63,  63, 14, 1,     29,     'VCA 2 modulation by ENV 2');
+    StdSlider(   \$subframe, \$PData[ 31],           0,  63,$sp, 1,     27,     'VCA 1 Volume');
+    StdSlider(   \$subframe, \$PData[ 92],         -63,  63,$sn, 1,     28,     'VCA 1 modulation by Velocity');
+    StdSlider(   \$subframe, \$PData[ 93],         -63,  63,$sn, 1,     29,     'VCA 2 modulation by ENV 2');
 }
 
 sub FM_Frame {
     my $subframe=StdFrame(\$FM_frame,'FM');
-    StdSlider(   \$subframe, \$PData[ 30],           0,  63,  7, 1,     30,     'VCF FM amount');
-    StdSlider(   \$subframe, \$PData[100],         -63,  63, 14, 1,     31,     'FM modulation by ENV 3');
-    StdSlider(   \$subframe, \$PData[101],         -63,  63, 14, 1,     32,     'FM modulation by Aftertouch');
+    StdSlider(   \$subframe, \$PData[ 30],           0,  63,$sp, 1,     30,     'VCF FM amount');
+    StdSlider(   \$subframe, \$PData[100],         -63,  63,$sn, 1,     31,     'FM modulation by ENV 3');
+    StdSlider(   \$subframe, \$PData[101],         -63,  63,$sn, 1,     32,     'FM modulation by Aftertouch');
 }
 
 sub TrGen_Frame {
     my $subframe=StdFrame(\$TrGen_frame,'Tracking Generator');
     PullDwnMenu( \$subframe, \$PData[ 76],      \@mod_sources,          33, 18, 'Tracking source:');
-    StdSlider(   \$subframe, \$PData[ 77],           0,  63,  7, 1,     34,     'Tracking Point 1 (0=neutral)');
-    StdSlider(   \$subframe, \$PData[ 78],           0,  63,  7, 1,     35,     'Tracking Point 2 (15=neutral)');
-    StdSlider(   \$subframe, \$PData[ 79],           0,  63,  7, 1,     36,     'Tracking Point 3 (31=neutral)');
-    StdSlider(   \$subframe, \$PData[ 80],           0,  63,  7, 1,     37,     'Tracking Point 4 (47=neutral)');
-    StdSlider(   \$subframe, \$PData[ 81],           0,  63,  7, 1,     38,     'Tracking Point 5 (63=neutral)');
+    StdSlider(   \$subframe, \$PData[ 77],           0,  63,$sp, 1,     34,     'Tracking Point 1 (0=neutral)');
+    StdSlider(   \$subframe, \$PData[ 78],           0,  63,$sp, 1,     35,     'Tracking Point 2 (15=neutral)');
+    StdSlider(   \$subframe, \$PData[ 79],           0,  63,$sp, 1,     36,     'Tracking Point 3 (31=neutral)');
+    StdSlider(   \$subframe, \$PData[ 80],           0,  63,$sp, 1,     37,     'Tracking Point 4 (47=neutral)');
+    StdSlider(   \$subframe, \$PData[ 81],           0,  63,$sp, 1,     38,     'Tracking Point 5 (63=neutral)');
 }
 
 sub Ramp_Frame {
     my($ramp)=@_;
     my $m=($ramp*2);
     my $subframe=StdFrame(\$Ramp_frame[$ramp],'Ramp Generator '.($ramp+1));
-    StdSlider(   \$subframe, \$PData[(82+$m)],       0,  63,  7, 1,(40+$m),     'Rate');
+    StdSlider(   \$subframe, \$PData[(82+$m)],       0,  63,$sp, 1,(40+$m),     'Rate');
     my @RampTRG_label=('single', 'multi', 'external', 'gated ext');
     OptSelect(   \$subframe, \$PData[(83+$m)],  \@RampTRG_label,   (41+$m),  8, 'Ramp trigger type:');
 }
 
 sub Porta_Frame {
     my $subframe=StdFrame(\$Porta_frame,'Portamento');
-    StdSlider(   \$subframe, \$PData[ 32],           0,  63,  7, 1,     44,     'Portamento Rate (transition time)');
-    StdSlider(   \$subframe, \$PData[ 99],         -63,  63, 14, 1,     45,     'Portamento modulation by Velocity');
+    StdSlider(   \$subframe, \$PData[ 32],           0,  63,$sp, 1,     44,     'Portamento Rate (transition time)');
+    StdSlider(   \$subframe, \$PData[ 99],         -63,  63,$sn, 1,     45,     'Portamento modulation by Velocity');
     my @Portamode_label=('linear', 'constant', 'exponential');
     OptSelect(   \$subframe, \$PData[ 33],   \@Portamode_label,         46, 10, 'Portamento Mode:');
     OnOffSwitch( \$subframe, \$PData[ 34],                              47,     'Legato Portamento: ');
@@ -1318,13 +1317,13 @@ sub Env_Frame {
     my $subframe=StdFrame(\$Env_frame[$env],'Envelope '.($env+1));
     my @EnvMod_label=('normal', 'DADR', 'freerun', 'both');
     OptSelect(   \$subframe, \$PData[(57+$n)],  \@EnvMod_label,    (58+$m),  7, 'Envelope Mode:');
-    StdSlider(   \$subframe, \$PData[(50+$n)],       0,  63,  7, 1,(50+$m),     'Initial Delay Time');
-    StdSlider(   \$subframe, \$PData[(51+$n)],       0,  63,  7, 1,(51+$m),     'Attack Time');
-    StdSlider(   \$subframe, \$PData[(52+$n)],       0,  63,  7, 1,(52+$m),     'Decay Time');
-    StdSlider(   \$subframe, \$PData[(53+$n)],       0,  63,  7, 1,(53+$m),     'Sustain Level');
-    StdSlider(   \$subframe, \$PData[(54+$n)],       0,  63,  7, 1,(54+$m),     'Release Time');
-    StdSlider(   \$subframe, \$PData[(55+$n)],       0,  63,  7, 1,(55+$m),     'Amplitude Level');
-    StdSlider(   \$subframe, \$PData[(94+$env)],   -63,  63, 14, 1,(56+$m),     'Amplitude modulation by Velocity');
+    StdSlider(   \$subframe, \$PData[(50+$n)],       0,  63,$sp, 1,(50+$m),     'Initial Delay Time');
+    StdSlider(   \$subframe, \$PData[(51+$n)],       0,  63,$sp, 1,(51+$m),     'Attack Time');
+    StdSlider(   \$subframe, \$PData[(52+$n)],       0,  63,$sp, 1,(52+$m),     'Decay Time');
+    StdSlider(   \$subframe, \$PData[(53+$n)],       0,  63,$sp, 1,(53+$m),     'Sustain Level');
+    StdSlider(   \$subframe, \$PData[(54+$n)],       0,  63,$sp, 1,(54+$m),     'Release Time');
+    StdSlider(   \$subframe, \$PData[(55+$n)],       0,  63,$sp, 1,(55+$m),     'Amplitude Level');
+    StdSlider(   \$subframe, \$PData[(94+$env)],   -63,  63,$sn, 1,(56+$m),     'Amplitude modulation by Velocity');
     my @TrgMod_label=('KST', 'KSR', 'KMT', 'KMR', 'XST', 'XSR', 'XMT', 'XMR');
     OptSelect(   \$subframe, \$PData[(49+$n)],  \@TrgMod_label,    (57+$m),  4, 'Trigger Mode:');
     my @LFOTrg_label=('off', 'LFO 1', 'G-LFO 1');
@@ -1341,12 +1340,12 @@ sub LFO_Frame {
     OptSelect(   \$subframe, \$PData[(38+$n)],  \@LFOWav_label,    (82+$m), 23, 'Waveform:');
     OnOffSwitch( \$subframe, \$PData[(37+$n)],                     (87+$m),     'Lag: ');
     PullDwnMenu( \$subframe, \$PData[(40+$n)],  \@mod_sources,     (88+$m), 18, 'Sample source:');
-    StdSlider(   \$subframe, \$PData[(35+$n)],       0,  63,  7, 1,(80+$m),     'Speed (frequency)');
+    StdSlider(   \$subframe, \$PData[(35+$n)],       0,  63,$sp, 1,(80+$m),     'Speed (frequency)');
     if (!$lfo) { $txt='Aftertouch'; } else { $txt='Keyboard'; }
-    StdSlider(   \$subframe, \$PData[(102+$lfo)],  -63,  63, 14, 1,(81+$m),     'Speed modulation by '.$txt);
-    StdSlider(   \$subframe, \$PData[(41+$n)],       0,  63,  7, 1,(84+$m),     'Amplitude');
-    StdSlider(   \$subframe, \$PData[(97+$lfo)],   -63,  63, 14, 1,(85+$m),     'Amplitude modulation by Ramp '.($lfo+1));
-    StdSlider(   \$subframe, \$PData[(39+$n)],       0,  63,  7, 1,(83+$m),     'Retrigger Point');
+    StdSlider(   \$subframe, \$PData[(102+$lfo)],  -63,  63,$sn, 1,(81+$m),     'Speed modulation by '.$txt);
+    StdSlider(   \$subframe, \$PData[(41+$n)],       0,  63,$sp, 1,(84+$m),     'Amplitude');
+    StdSlider(   \$subframe, \$PData[(97+$lfo)],   -63,  63,$sn, 1,(85+$m),     'Amplitude modulation by Ramp '.($lfo+1));
+    StdSlider(   \$subframe, \$PData[(39+$n)],       0,  63,$sp, 1,(83+$m),     'Retrigger Point');
     my @TrgMod_label=('off', 'single', 'multi', 'pedal 2');
     OptSelect(   \$subframe, \$PData[(36+$n)],  \@TrgMod_label,    (86+$m),  7, 'Trigger Mode:');
 }
@@ -1366,7 +1365,7 @@ sub ModMatrix_Frame {
         PullDwnMenu( \$subframe, \$PData[(104+$n)],  \@mod_sources, ($a+100), 20, "$a) ");
 
         %GridConf=(-row=>($a+1), -column=>2, -sticky=>'ew', -padx=>6, -pady=>6);
-        StdSlider(   \$subframe, \$PData[(105+$n)], -63,  63, 14, 1,($a+100),     '');
+        StdSlider(   \$subframe, \$PData[(105+$n)], -63,  63,$sn, 1,($a+100),     '');
 
         %GridConf=(-row=>($a+1), -column=>4, -sticky=>'ew', -padx=>6, -pady=>6);
         PullDwnMenu( \$subframe, \$PData[(106+$n)],  \@mod_dest,    ($a+100), 20, '');
